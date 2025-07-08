@@ -4,7 +4,8 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const fs = require('fs');
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+
 
 // Debug info
 console.log("Script is running...");
@@ -108,4 +109,12 @@ process.on('uncaughtException', function (err) {
 
 process.on('unhandledRejection', function (reason, promise) {
     console.error('Unhandled Rejection:', reason);
+});
+
+app.get('/', (req, res) => {
+  res.send('Lobby Server is running!');
+});
+
+app.listen(PORT, () => {
+    console.log(`Lobby server listening on http://localhost:${PORT}`);
 });
