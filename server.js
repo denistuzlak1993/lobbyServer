@@ -18,10 +18,12 @@ app.use(bodyParser.json());
 // File paths
 const hostsFile = 'hosts.json';
 const racesFile = 'races.json';
+const leaderboardFile = 'leaderboard.json';
 
 // Init files if not exist
 if (!fs.existsSync(hostsFile)) fs.writeFileSync(hostsFile, JSON.stringify([]));
 if (!fs.existsSync(racesFile)) fs.writeFileSync(racesFile, JSON.stringify([]));
+if (!fs.existsSync(leaderboardFile)) fs.writeFileSync(leaderboardFile, JSON.stringify([]));
 
 function loadHosts() {
     return JSON.parse(fs.readFileSync(hostsFile));
@@ -37,6 +39,14 @@ function loadRaces() {
 
 function saveRaces(data) {
     fs.writeFileSync(racesFile, JSON.stringify(data, null, 2));
+}
+
+function loadLeaderboard() {
+    return JSON.parse(fs.readFileSync(leaderboardFile));
+}
+
+function saveLeaderboard(data) {
+    fs.writeFileSync(leaderboardFile, JSON.stringify(data, null, 2));
 }
 
 // Register new host or update existing
@@ -97,6 +107,32 @@ app.post('/addRace/', (req, res) => {
     res.send({ success: true });
 });
 
+app.post('/submitRecord/', (req, res) => {
+    const { driver_name, timing, track, layout, condition, car } = req.body;
+
+    if (!driver_name || timing == null || track == null || layout == null || condition == null || car == null) {
+        return res.status(400).send({ error: 'Missing required fields' });
+    }
+
+    let records = loadLeaderboard();
+
+    const id = Date.now().toString(); // Jednostavan ID (može se kasnije zamijeniti UUID-om)
+    records.push({
+        id,
+        driver_name,
+        timing: parseFloat(timing),
+        track: parseInt(track),
+        layout: parseInt(layout),
+        condition: parseInt(condition),
+        car: parseInt(car)
+    });
+
+    // Sortiraj po vremenu (manje je bolje)
+    records.sort((a, b) => a.timing - b.timing);
+
+    saveLeaderboard(records);
+    res.send({ success: true, id });
+});
 // Start server
 app.listen(PORT, () => {
     console.log(`Lobby server listening on http://localhost:${PORT}`);
@@ -114,7 +150,25 @@ process.on('unhandledRejection', function (reason, promise) {
 app.get('/', (req, res) => {
   res.send('Lobby Server is running!');
 });
+app.get('/getRecords/', (req, res) => {
+    const { track, layout, condition, car } = req.query;
 
+    if (track == null || layout == null || condition == null || car == null) {
+        return res.status(400).send({ error: 'Missing query parameters' });
+    }
+
+    let records = loadLeaderboard();
+
+    // Filtriraj po traženim kriterijima
+    let filtered = records.filter(r =>
+        r.track == track &&
+        r.layout == layout &&
+        r.condition == condition &&
+        r.car == car
+    );
+
+    res.send({ records: filtered });
+});
 app.listen(PORT, () => {
     console.log(`Lobby server listening on http://localhost:${PORT}`);
 });
